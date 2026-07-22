@@ -1,0 +1,31 @@
+[package]
+name = "world-id-solana"
+description = "World ID Solana satellite program: bridged state + Groth16 proof verification."
+publish = false
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "world_id_solana"
+
+[dependencies]
+anchor-lang = { workspace = true, features = ["init-if-needed"] }
+groth16-solana = "0.2.0"
+hex = { workspace = true }
+num-bigint = "0.4.6"
+solana-bn254 = "2.2.2"
+thiserror = { workspace = true }
+world-id-primitives = { workspace = true }
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []

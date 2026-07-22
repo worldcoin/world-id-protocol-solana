@@ -12,7 +12,9 @@ use groth16_solana::{
     groth16::{Groth16Verifier, Groth16Verifyingkey},
 };
 use num_bigint::BigUint;
+#[cfg(not(target_os = "solana"))]
 use solana_bn254::compression::prelude::{alt_bn128_g1_compress, alt_bn128_g2_compress};
+#[cfg(not(target_os = "solana"))]
 use world_id_primitives::ZeroKnowledgeProof;
 
 const BN254_BASE_FIELD_HEX: &str =
@@ -157,6 +159,10 @@ pub struct SolanaCompressedProof {
 
 /// Verifies a proof that has already been converted to Solana's uncompressed
 /// Groth16 input layout.
+///
+/// Not used on-chain (excluded from the on-chain build via `target_os`):
+/// provided for host-side/off-chain tooling.
+#[cfg(not(target_os = "solana"))]
 pub fn verify_uncompressed_proof(
     proof_a_neg: &[u8; 64],
     proof_b: &[u8; 128],
@@ -229,6 +235,13 @@ fn verify_uncompressed_proof_with_vk_sign(
 /// points encoded as `(x << 1) | sign`, while `B` is a G2 point encoded as
 /// `[(x1), (x0 << 2) | hint | sign]` in the proof array. After decoding, Groth16
 /// verification is still delegated to `groth16-solana`.
+///
+/// This path runs full modular-exponentiation square roots in pure Rust (no
+/// BN254 syscalls) and is compute-unit-prohibitive on-chain; it is excluded
+/// from the on-chain build via `target_os` and is intended for host-side
+/// conversion/testing only. On-chain programs should use
+/// [`verify_solana_compressed_proof`].
+#[cfg(not(target_os = "solana"))]
 pub fn verify_solidity_compressed_proof(
     compressed_proof: &[[u8; 32]; 4],
     public_inputs: &[[u8; 32]; 15],
@@ -247,6 +260,10 @@ pub fn verify_solidity_compressed_proof(
 /// [`SolanaCompressedProof`] can be passed to [`verify_solana_compressed_proof`]
 /// in a Solana program without running the Solidity-format decompression logic
 /// on-chain.
+///
+/// Client-side/off-chain only; excluded from the on-chain build via
+/// `target_os` (see [`verify_solidity_compressed_proof`]).
+#[cfg(not(target_os = "solana"))]
 pub fn solidity_to_solana_compressed_proof(
     compressed_proof: &[[u8; 32]; 4],
 ) -> Result<SolanaCompressedProof, Error> {
@@ -267,6 +284,10 @@ pub fn solidity_to_solana_compressed_proof(
 /// chains consume. This helper performs the client-side conversion to Solana's
 /// BN254 compressed point format, then verifies through the Solana-compressed
 /// verifier path.
+///
+/// Client-side/off-chain only; excluded from the on-chain build via
+/// `target_os` (see [`verify_solidity_compressed_proof`]).
+#[cfg(not(target_os = "solana"))]
 pub fn verify_zero_knowledge_proof(
     proof: &ZeroKnowledgeProof,
     public_inputs: &[[u8; 32]; 15],
@@ -281,6 +302,10 @@ pub fn verify_zero_knowledge_proof(
 /// Solana's BN254 compressed proof format.
 ///
 /// Use this client-side before submitting a proof to a Solana program.
+///
+/// Client-side/off-chain only; excluded from the on-chain build via
+/// `target_os` (see [`verify_solidity_compressed_proof`]).
+#[cfg(not(target_os = "solana"))]
 pub fn zero_knowledge_proof_to_solana_compressed(
     proof: &ZeroKnowledgeProof,
 ) -> Result<SolanaCompressedProof, Error> {
@@ -348,6 +373,7 @@ fn signed_g2(
     Ok(out)
 }
 
+#[cfg(not(target_os = "solana"))]
 fn decompress_solidity_g1(word: &[u8; 32]) -> Result<[u8; 64], Error> {
     let c = BigUint::from_bytes_be(word);
     if c == BigUint::from(0u8) {
@@ -369,6 +395,7 @@ fn decompress_solidity_g1(word: &[u8; 32]) -> Result<[u8; 64], Error> {
     Ok(g1_from_xy(&x, &y))
 }
 
+#[cfg(not(target_os = "solana"))]
 fn decompress_solidity_g2(c0_word: &[u8; 32], c1_word: &[u8; 32]) -> Result<[u8; 128], Error> {
     if c0_word.iter().all(|byte| *byte == 0) && c1_word.iter().all(|byte| *byte == 0) {
         return Ok([0u8; 128]);
@@ -425,27 +452,33 @@ fn decimal_biguint(value: &str) -> Result<BigUint, Error> {
     BigUint::from_str(value).map_err(|_| Error::InvalidInteger)
 }
 
+#[cfg(not(target_os = "solana"))]
 fn hex_biguint(value: &str) -> Result<BigUint, Error> {
     BigUint::parse_bytes(value.as_bytes(), 16).ok_or(Error::InvalidInteger)
 }
 
+#[cfg(not(target_os = "solana"))]
 fn fp_modulus() -> Result<BigUint, Error> {
     hex_biguint(BN254_BASE_FIELD_HEX)
 }
 
+#[cfg(not(target_os = "solana"))]
 fn fp_add(a: &BigUint, b: &BigUint) -> Result<BigUint, Error> {
     Ok((a + b) % fp_modulus()?)
 }
 
+#[cfg(not(target_os = "solana"))]
 fn fp_mul(a: &BigUint, b: &BigUint) -> Result<BigUint, Error> {
     Ok((a * b) % fp_modulus()?)
 }
 
+#[cfg(not(target_os = "solana"))]
 fn fp_neg(a: &BigUint) -> Result<BigUint, Error> {
     let p = fp_modulus()?;
     Ok((&p - (a % &p)) % p)
 }
 
+#[cfg(not(target_os = "solana"))]
 fn fp_inv(a: &BigUint) -> Result<BigUint, Error> {
     let p = fp_modulus()?;
     let inverse = a.modpow(&(&p - BigUint::from(2u8)), &p);
@@ -455,6 +488,7 @@ fn fp_inv(a: &BigUint) -> Result<BigUint, Error> {
     Ok(inverse)
 }
 
+#[cfg(not(target_os = "solana"))]
 fn fp_sqrt(a: &BigUint) -> Result<BigUint, Error> {
     let p = fp_modulus()?;
     if a >= &p {
@@ -468,6 +502,7 @@ fn fp_sqrt(a: &BigUint) -> Result<BigUint, Error> {
     Ok(root)
 }
 
+#[cfg(not(target_os = "solana"))]
 fn fp2_sqrt(a0: &BigUint, a1: &BigUint, hint: bool) -> Result<(BigUint, BigUint), Error> {
     let norm = fp_add(&fp_mul(a0, a0)?, &fp_mul(a1, a1)?)?;
     let mut d = fp_sqrt(&norm)?;
@@ -490,6 +525,7 @@ fn fp2_sqrt(a0: &BigUint, a1: &BigUint, hint: bool) -> Result<(BigUint, BigUint)
     Ok((x0, x1))
 }
 
+#[cfg(not(target_os = "solana"))]
 fn g1_from_xy(x: &BigUint, y: &BigUint) -> [u8; 64] {
     let mut out = [0u8; 64];
     out[..32].copy_from_slice(&biguint_word(x));
@@ -497,6 +533,7 @@ fn g1_from_xy(x: &BigUint, y: &BigUint) -> [u8; 64] {
     out
 }
 
+#[cfg(not(target_os = "solana"))]
 fn g2_from_xy(x0: &BigUint, x1: &BigUint, y0: &BigUint, y1: &BigUint) -> [u8; 128] {
     let mut out = [0u8; 128];
     out[..32].copy_from_slice(&biguint_word(x1));

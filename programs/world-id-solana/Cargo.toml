@@ -20,6 +20,7 @@ groth16-solana = "0.2.0"
 hex = { workspace = true }
 num-bigint = "0.4.6"
 solana-bn254 = "2.2.2"
+solana-keccak-hasher = { version = "3", features = ["sha3"] }
 thiserror = { workspace = true }
 world-id-primitives = { workspace = true }
 

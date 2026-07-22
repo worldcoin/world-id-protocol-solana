@@ -2,3 +2,4 @@
 Cargo.lock
 .anchor/
 test-ledger/
+.env

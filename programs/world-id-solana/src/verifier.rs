@@ -19,10 +19,13 @@ use world_id_primitives::ZeroKnowledgeProof;
 
 const BN254_BASE_FIELD_HEX: &str =
     "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
+#[cfg(not(target_os = "solana"))]
 const FRACTION_1_2_FP_HEX: &str =
     "183227397098d014dc2822db40c0ac2ecbc0b548b438e5469e10460b6c3e7ea4";
+#[cfg(not(target_os = "solana"))]
 const FRACTION_27_82_FP_HEX: &str =
     "2b149d40ceb8aaae81be18991be06ac3b5b4c5e559dbefa33267e6dc24a138e5";
+#[cfg(not(target_os = "solana"))]
 const FRACTION_3_82_FP_HEX: &str =
     "2fcd3ac2a640a154eb23960892a85a68f031ca0c8344b23a577dcf1052b9e775";
 

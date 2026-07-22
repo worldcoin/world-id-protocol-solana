@@ -422,6 +422,8 @@ pub struct RemoveGateway<'info> {
     #[account(
         mut,
         close = owner,
+        seeds = [GATEWAY_SEED, gateway_authorization.gateway.as_ref()],
+        bump = gateway_authorization.bump,
         constraint = gateway_authorization.config == config.key() @ SatelliteError::InvalidStateAccount
     )]
     pub gateway_authorization: Account<'info, GatewayAuthorization>,

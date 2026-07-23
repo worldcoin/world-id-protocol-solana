@@ -1,0 +1,41 @@
+[package]
+name = "world-id-solana"
+description = "World ID Solana satellite program: bridged state + Groth16 proof verification."
+publish = false
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "world_id_solana"
+
+[dependencies]
+anchor-lang = { workspace = true, features = ["init-if-needed"] }
+groth16-solana = "0.2.0"
+hex = { workspace = true }
+num-bigint = "0.4.6"
+solana-bn254 = "2.2.2"
+solana-keccak-hasher = { version = "3", features = ["sha3"] }
+thiserror = { workspace = true }
+
+# `world-id-primitives` (and its `alloy` dependency, for Solidity-compatible
+# proof encoding) is only used by the off-chain/host-only helpers in
+# `verifier.rs` (gated with `#[cfg(not(target_os = "solana"))]`). Keeping it
+# out of the on-chain dependency graph entirely (not just cfg'd out at the
+# code level) matters in practice: `alloy`'s MSRV has outpaced the rustc
+# bundled with Solana's SBF platform-tools, which otherwise breaks
+# `cargo build-sbf` outright regardless of whether the symbols are used.
+[target.'cfg(not(target_os = "solana"))'.dependencies]
+world-id-primitives = { workspace = true }
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []

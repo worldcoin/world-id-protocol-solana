@@ -1,0 +1,27 @@
+[workspace]
+members = ["programs/world-id-solana"]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "MIT"
+authors = [
+  "World Foundation",
+  "Tools for Humanity",
+]
+homepage = "https://docs.world.org/world-id"
+repository = "https://github.com/worldcoin/world-id-protocol-solana"
+rust-version = "1.85"
+
+[workspace.dependencies]
+anchor-lang = "1.0.2"
+hex = { version = "0.4" }
+thiserror = "2"
+# TODO: drop the branch pin once worldcoin/world-id-protocol#797 merges to main.
+world-id-primitives = { git = "https://github.com/worldcoin/world-id-protocol", branch = "codex/solana-verifier-phase-0", package = "world-id-primitives", default-features = false }
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1

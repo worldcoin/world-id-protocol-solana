@@ -1,0 +1,77 @@
+name: Rust
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Pin the Solana/Anchor toolchain used to build the on-chain program so CI
+  # doesn't silently drift onto a newer platform-tools release. Bump
+  # deliberately alongside Anchor.toml / README updates.
+  SOLANA_CLI_VERSION: stable
+
+jobs:
+  check:
+    name: fmt / clippy / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: host
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace
+
+  build-sbf:
+    name: Anchor program builds for Solana (cargo-build-sbf)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: sbf
+
+      - name: Install Solana CLI (provides cargo-build-sbf)
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/${SOLANA_CLI_VERSION}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: cargo-build-sbf
+        run: |
+          cargo-build-sbf \
+            --manifest-path programs/world-id-solana/Cargo.toml \
+            --sbf-out-dir target/deploy
+
+      - name: Verify program artifact was produced
+        run: test -s target/deploy/world_id_solana.so
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: world_id_solana.so
+          path: target/deploy/world_id_solana.so
+          retention-days: 14

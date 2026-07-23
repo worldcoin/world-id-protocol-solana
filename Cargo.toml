@@ -1,5 +1,5 @@
 [workspace]
-members = ["programs/world-id-solana"]
+members = ["programs/world-id-solana", "tools/deploy"]
 resolver = "2"
 
 [workspace.package]

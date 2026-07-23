@@ -18,7 +18,8 @@ rust-version = "1.85"
 anchor-lang = "1.0.2"
 hex = { version = "0.4" }
 thiserror = "2"
-world-id-primitives = { git = "https://github.com/worldcoin/world-id-protocol", package = "world-id-primitives", default-features = false }
+# TODO: drop the branch pin once worldcoin/world-id-protocol#797 merges to main.
+world-id-primitives = { git = "https://github.com/worldcoin/world-id-protocol", branch = "codex/solana-verifier-phase-0", package = "world-id-primitives", default-features = false }
 
 [profile.release]
 overflow-checks = true

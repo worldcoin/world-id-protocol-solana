@@ -1,0 +1,22 @@
+[package]
+name = "world-id-solana-deploy"
+description = "Deploy-time helper for initializing and managing the World ID Solana satellite program (Config, gateway authorization), used by scripts/deploy.sh."
+publish = false
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "world-id-solana-deploy"
+path = "src/main.rs"
+
+[dependencies]
+anchor-client = { version = "1.0.2", features = ["async"] }
+eyre = "0.6"
+solana-keypair = "3.0.1"
+tokio = { version = "1", features = ["full"] }
+world-id-solana = { path = "../../programs/world-id-solana" }

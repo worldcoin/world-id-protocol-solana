@@ -12,7 +12,7 @@ deployment lifecycle independent from the relay's release cadence.
 
 ## Layout
 
-This is a single crate, split into two modules:
+The on-chain program is a single crate, split into two modules:
 
 ```
 programs/world-id-solana/
@@ -26,6 +26,18 @@ programs/world-id-solana/
 independent versioning or publishing story. If you're looking for the
 account layout, instruction handlers, or PDA seeds, start in `lib.rs`. If
 you're looking for proof/curve verification, start in `verifier.rs`.
+
+Alongside it:
+
+```
+tools/deploy/
+  src/main.rs  # initialize / add-gateway / remove-gateway / set-owner, used by scripts/deploy.sh
+scripts/
+  deploy.sh    # single entrypoint: build -> deploy -> IDL -> initialize -> add-gateway
+```
+
+`tools/deploy` handles the post-deploy setup steps that `solana program
+deploy` doesn't do for you — see [Deployment](#deployment) below.
 
 ## Dependency on `world-id-protocol`
 
@@ -62,46 +74,39 @@ test suite, not here — see that repo's README for running them.
 
 ## Deployment
 
-1. **Pick a cluster and confirm the deploy key.**
+`scripts/deploy.sh` is the single entrypoint for the whole pipeline: build →
+`solana program deploy` → push the IDL → `initialize` → `add-gateway`. It's
+entirely config-driven — copy `.env.example` to `.env`, fill in the values,
+and run it with no arguments:
 
-   ```sh
-   solana config set --url <devnet|testnet|mainnet-beta>
-   solana address -k <upgrade-authority-keypair>
-   ```
+```sh
+cp .env.example .env
+# edit .env: SOLANA_RPC_URL, SOLANA_AUTHORITY_KEYPAIR, and (first deploy only)
+# SOLANA_PROGRAM_KEYPAIR / GATEWAY_PUBKEY
+./scripts/deploy.sh
+```
 
-   Never use a locally-generated throwaway keypair as the upgrade authority
-   for testnet/mainnet — use the multisig/PDA authority designated for this
-   program.
+It's safe to re-run: `initialize`/`add-gateway` use Anchor's `init` constraint
+under the hood, so a repeat call against an already-initialized program or
+already-authorized gateway fails cleanly (logged as a non-fatal warning)
+instead of corrupting state — re-running after changing only
+`SOLANA_PROGRAM_KEYPAIR` (for an upgrade) just skips those steps.
 
-2. **Build the verifiable artifact.**
+Never point `SOLANA_AUTHORITY_KEYPAIR` at a locally-generated throwaway
+keypair for testnet/mainnet — use the multisig/PDA authority designated for
+this program.
 
-   ```sh
-   anchor build --verifiable
-   ```
+Under the hood, `scripts/deploy.sh` runs:
 
-3. **Deploy (first time) or upgrade (subsequent releases).**
+1. `cargo build-sbf --manifest-path programs/world-id-solana/Cargo.toml --sbf-out-dir target/deploy`
+2. `solana program deploy` (first deploy, keyed by `SOLANA_PROGRAM_KEYPAIR`; upgrade otherwise, keyed by `PROGRAM_ID`)
+3. `anchor idl init`/`anchor idl upgrade` (skipped if the `anchor` CLI isn't installed — optional)
+4. `cargo run -p world-id-solana-deploy -- ... initialize ...` (see `tools/deploy/src/main.rs` — a thin wrapper over the official `anchor-client` Rust crate, not hand-rolled instruction encoding)
+5. The same tool's `add-gateway`, if `GATEWAY_PUBKEY` is set
 
-   ```sh
-   # First deploy
-   solana program deploy target/deploy/world_id_solana.so \
-     --program-id target/deploy/world_id_solana-keypair.json \
-     --upgrade-authority <upgrade-authority-keypair>
-
-   # Upgrade an existing deployment
-   solana program deploy target/deploy/world_id_solana.so \
-     --program-id BxHvVSWUkStm7RsKySrzyGWV85PNF8TsGTsPEQ3PsVfK \
-     --upgrade-authority <upgrade-authority-keypair>
-   ```
-
-4. **Push the IDL** so downstream clients (including the relay) can fetch it:
-
-   ```sh
-   anchor idl init  --filepath target/idl/world_id_solana.json <program-id>   # first deploy
-   anchor idl upgrade --filepath target/idl/world_id_solana.json <program-id> # subsequent releases
-   ```
-
-5. **Tag the release** (`git tag solana-vX.Y.Z`) so the relay repo can pin a
-   specific commit/tag when it depends on this program via git (see below).
+Finally, **tag the release** (`git tag solana-vX.Y.Z`) so the relay repo can
+pin a specific commit/tag when it depends on this program via git (see
+below).
 
 Rollout notes:
 - Treat mainnet upgrades like any other irreversible-ish production change:

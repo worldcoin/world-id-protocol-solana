@@ -72,6 +72,19 @@ On-chain integration tests (LiteSVM-based end-to-end tests exercising the
 relay against this program) live in `world-id-protocol`'s `services/relay`
 test suite, not here — see that repo's README for running them.
 
+## Calling `verify`/`verify_session`
+
+Groth16/BN254 pairing verification is compute-intensive and **exceeds
+Solana's default 200,000 compute-unit per-instruction limit**. Every caller
+must prepend a compute-budget instruction requesting a higher limit, or the
+transaction fails with `exceeded CUs meter at BPF instruction`:
+
+```rust
+let compute_budget_ix =
+    solana_compute_budget_interface::ComputeBudgetInstruction::set_compute_unit_limit(1_400_000); // network max
+// include compute_budget_ix as the first instruction in the same transaction as verify/verify_session
+```
+
 ## Deployment
 
 `scripts/deploy.sh` is the single entrypoint for the whole pipeline: build →
